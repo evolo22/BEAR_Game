@@ -11,8 +11,6 @@ def initialize_screen():
     pygame.display.set_caption("My Game")
     return screen
 
-
-
 #------------------Background Object------------------#
 
 class Background:
@@ -169,29 +167,105 @@ class Obstacles(pygame.sprite.Sprite):
     @staticmethod
     def randomly_generate_obstacle():
         obstacle_type = random.choice(["easy", "difficult"])
-        return Obstacles(obstacle_type)
+
+        random_x = random.randint(1000, 1600) 
+        return Obstacles(obstacle_type, x=random_x)
 
 #---------------------Button-------------------------#
 
 class Button(pygame.sprite.Sprite):
+    def __init__(
+        self,
+        x, y,
+        width, height,
+        image_idle, image_hover, image_pressed,
+        text="",
+        font_name=None,
+        font_size=30,
+        text_color=(255, 255, 255),
+        action=None
+    ):
+        super().__init__()
+
+        # Load and scale images
+        self.image_idle = pygame.transform.scale(pygame.image.load(image_idle).convert_alpha(), (width, height))
+        self.image_hover = pygame.transform.scale(pygame.image.load(image_hover).convert_alpha(), (width, height))
+        self.image_pressed = pygame.transform.scale(pygame.image.load(image_pressed).convert_alpha(), (width, height))
+
+        self.image = self.image_idle
+        self.rect = self.image.get_rect(topleft=(x, y))
+        self.clicked = False
+        self.action = action
+
+        # Text setup
+        self.text = text
+        self.font = pygame.font.SysFont(font_name, font_size)
+        self.text_color = text_color
+        self.text_surface = self.font.render(self.text, True, self.text_color)
+
+        # For centering text on button
+        self.text_rect = self.text_surface.get_rect(center=self.rect.center)
+
+    def update(self, events):
+        mouse_pos = pygame.mouse.get_pos()
+        mouse_pressed = pygame.mouse.get_pressed()
+
+        if self.rect.collidepoint(mouse_pos):
+            if mouse_pressed[0]:
+                self.image = self.image_pressed
+                if not self.clicked:
+                    self.clicked = True
+                    if self.action:
+                        self.action()
+            else:
+                self.image = self.image_hover
+                self.clicked = False
+        else:
+            self.image = self.image_idle
+            self.clicked = False
+
+        # Recalculate text_rect in case position changes
+        self.text_rect = self.text_surface.get_rect(center=self.rect.center)
+
+    def draw(self, screen):
+        screen.blit(self.image, self.rect)
+        screen.blit(self.text_surface, self.text_rect)
      
-     def button_pressed(self, button_function):
-          #When button pressed, perform button function
-          pass
+
+
+
+#-------------------Menu-----------------------------#
+class Menu(pygame.sprite.Sprite):
+    def __init__(self, x, y, width, height, menu_img=None):
+        super().__init__()
+        self.width = width
+        self.height = height
+
+        if menu_img:
+            self.menu = pygame.image.load(menu_img).convert_alpha()
+            self.menu = pygame.transform.scale(self.menu, (self.width, self.height))
+            self.rect = self.menu.get_rect(topleft=(x, y))
+        else:
+            self.menu = None
+            self.rect = pygame.Rect(x, y, width, height)
+
+    def draw(self, screen):
+        if self.menu:
+            screen.blit(self.menu, self.rect)
 
 
 #-------------------Progress Bar---------------------#
 class Progress_Bar(pygame.sprite.Sprite):
-    def __init__(self, x, y, width, height, max_progress, bar_bg_image=None, fill_color=(0, 255, 0), fill_padding=100):
+    def __init__(self, x, y, width, height, max_progress, bar_bg_image=None, fill_color=(0, 255, 0), fill_padding=20):
         super().__init__()
         self.x = x
         self.y = y
-        self.width = width          # Total width of the outer bar
+        self.width = width
         self.height = height
         self.max_progress = max_progress
         self.current_progress = 0
         self.fill_color = fill_color
-
+        self.fill_padding = fill_padding
 
         # Load background image if provided
         self.bg_image = None
@@ -199,9 +273,8 @@ class Progress_Bar(pygame.sprite.Sprite):
             self.bg_image = pygame.image.load(bar_bg_image).convert_alpha()
             self.bg_image = pygame.transform.scale(self.bg_image, (width, height))
 
-        # Create image surface and rect
-        self.image = pygame.Surface((width, height), pygame.SRCALPHA)
-        self.rect = self.image.get_rect(topleft=(x, y))
+        # Create rect (used only for positioning)
+        self.rect = pygame.Rect(x, y, width, height)
 
     def update_progress(self, amount=1):
         self.current_progress += amount
@@ -212,35 +285,21 @@ class Progress_Bar(pygame.sprite.Sprite):
         self.current_progress = 0
 
     def draw(self, screen):
-        # Clear surface
-        self.image.fill((0, 0, 0, 0))  # Transparent
-
-        # Draw background of the bar
-        if self.bg_image:
-            self.image.blit(self.bg_image, (0, 0))
-        else:
-            pygame.draw.rect(self.image, (50, 50, 50), (0, 0, self.width, self.height), border_radius=4)
-
-        # Padding inside the progress bar
-        padding = 20
-        inner_width = self.width - 2 * padding
-        inner_height = self.height - 2 * padding
-
-        # Calculate fill width (clamped to avoid overflow)
         fill_ratio = self.current_progress / self.max_progress
-        fill_width = max(0, min(inner_width, int(fill_ratio * inner_width)))
+        fill_width = int(fill_ratio * 390)   
+        fill_height = 30                     
 
-        # Draw fill inside the bar's inner area
-        if fill_width > 0:
-            pygame.draw.rect(
-                self.image,
-                self.fill_color,
-                (padding, padding, fill_width, inner_height),
-                border_radius=2
-            )
+     
+        center_x = 175
+        center_y = 545
 
-        # Blit to screen
-        screen.blit(self.image, self.rect)
+        fill_rect = pygame.Rect(center_x, center_y, fill_width, fill_height)
+
+        # Draw the visible debug bar
+        pygame.draw.rect(screen, self.fill_color, fill_rect)
+        screen.blit(self.bg_image, (self.x, self.y))
+
+
 
      
 
